@@ -1,0 +1,103 @@
+# Copyright 2020 The HuggingFace Datasets Authors and the current dataset script contributor.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+"""Twitter Sentiment Analysis Training Corpus (Dataset)"""
+
+import json
+import os
+
+import datasets
+from datasets import load_dataset
+
+
+logger = datasets.logging.get_logger(__name__)
+
+
+_CITATION = """\
+@InProceedings{thinknook:dataset,
+title = {Twitter Sentiment Analysis Training Corpus (Dataset)},
+author={Ibrahim Naji},
+year={2012}
+}
+"""
+
+_DESCRIPTION = """\
+The Twitter Sentiment Analysis Dataset contains 1,578,627 classified tweets, each row is marked as 1 for positive sentiment and 0 for negative sentiment.
+The dataset is based on data from the following two sources:
+University of Michigan Sentiment Analysis competition on Kaggle
+Twitter Sentiment Corpus by Niek Sanders
+Finally, I randomly selected a subset of them, applied a cleaning process, and divided them between the test and train subsets, keeping a balance between
+the number of positive and negative tweets within each of these subsets.
+"""
+
+
+_URL = "https://raw.githubusercontent.com/cblancac/SentimentAnalysisBert/main/data/"
+_URLS = {
+    "train": _URL + "train_150k.txt",
+    "test": _URL + "test_62k.txt",
+}
+
+_HOMEPAGE = "https://raw.githubusercontent.com/cblancac/SentimentAnalysisBert/main"
+
+
+def _define_columns(example):
+    text_splited = example["text"].split('\t')
+    return {"text": text_splited[1].strip(), "feeling": int(text_splited[0])}
+
+
+class NewDataset(datasets.GeneratorBasedBuilder):
+
+    VERSION = datasets.Version("1.0.0")
+
+    def _info(self):
+        features = datasets.Features(
+            {
+                "text": datasets.Value("string"),
+                "feeling": datasets.Value("int32")
+            }
+        )
+        return datasets.DatasetInfo(
+            # This is description will appear on the datasets page.
+            description=_DESCRIPTION,
+            # This defines the different columns of the dataset and their types
+            features=features,
+            homepage=_HOMEPAGE,
+            # Citation for the dataset
+            citation=_CITATION,
+        )
+
+    def _split_generators(self, dl_manager):
+
+        data_dir_files = dl_manager.download_and_extract(_URLS)
+        data_dir = '/'.join(data_dir_files["train"].split('/')[:-1])
+
+        data = load_dataset("text", data_files=data_dir_files)
+        data = data.map(_define_columns)
+
+        texts_dataset_clean = data["train"].train_test_split(train_size=0.8, seed=42)
+        # Rename the default "test" split to "validation"
+        texts_dataset_clean["validation"] = texts_dataset_clean.pop("test")
+        # Add the "test" set to our `DatasetDict`
+        texts_dataset_clean["test"] = data["test"]
+        texts_dataset_clean
+        
+        for split, dataset in texts_dataset_clean.items():
+            dataset.to_json(data_dir + "/" + f"twitter-sentiment-analysis-{split}.jsonl")
+
+        return [
+            datasets.SplitGenerator(name=datasets.Split.TRAIN, gen_kwargs={"filepath": os.path.join(data_dir, "twitter-sentiment-analysis-train.jsonl")}),
+            datasets.SplitGenerator(name=datasets.Split.VALIDATION, gen_kwargs={"filepath": os.path.join(data_dir, "twitter-sentiment-analysis-validation.jsonl")}),
+            datasets.SplitGenerator(name=datasets.Split.TEST, gen_kwargs={"filepath": os.path.join(data_dir, "twitter-sentiment-analysis-test.jsonl")}),
+        ]   
+
+
+    def _generate_examples(self, filepath):
+        """This function returns the examples in the raw (text) form."""
+        logger.info("generating examples from = %s", filepath)
+        with open(filepath, encoding="utf-8") as f:
+            for key, row in enumerate(f):
+                data = json.loads(row)
+                yield key, {
+                    "text": data["text"],
+                    "feeling": data["feeling"],
+                }
