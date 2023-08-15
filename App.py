@@ -34,10 +34,13 @@ for epoch in range(5):
     for i, data in enumerate(trainloader, 0):
         inputs, labels = data
 
+        # Convert labels to binary labels (0 or 1)
+        binary_labels = (labels < 2).type(torch.LongTensor)
+        
         optimizer.zero_grad()
 
         outputs = model(inputs)
-        loss = criterion(outputs, labels)
+        loss = criterion(outputs, binary_labels)
         loss.backward()
         optimizer.step()
 
@@ -60,3 +63,5 @@ description = "This is an AI sentiment analyzer that checks and predicts the emo
 
 app = gr.Interface(fn=func, inputs="text", outputs="text", title="Sentiment Analyzer", description=description)
 app.launch()
+
+
