@@ -29,25 +29,26 @@ criterion = nn.CrossEntropyLoss()
 optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
 
 # Fine-tuning loop
-for epoch in range(5):
-    running_loss = 0.0
-    for i, data in enumerate(trainloader, 0):
-        inputs, labels = data
-
-        # Convert labels to binary labels (0 or 1)
-        binary_labels = (labels < 2).type(torch.LongTensor)
-        
-        optimizer.zero_grad()
-
-        outputs = model(inputs)
-        loss = criterion(outputs, binary_labels)
-        loss.backward()
-        optimizer.step()
-
-        running_loss += loss.item()
-        if i % 100 == 99:
-            print(f"[{epoch + 1}, {i + 1:5d}] loss: {running_loss / 100:.3f}")
-            running_loss = 0.0
+def fine_tune_model():
+    for epoch in range(5):
+        running_loss = 0.0
+        for i, data in enumerate(trainloader, 0):
+            inputs, labels = data
+    
+            # Convert labels to binary labels (0 or 1)
+            binary_labels = (labels < 2).type(torch.LongTensor)
+            
+            optimizer.zero_grad()
+    
+            outputs = model(inputs)
+            loss = criterion(outputs, binary_labels)
+            loss.backward()
+            optimizer.step()
+    
+            running_loss += loss.item()
+            if i % 100 == 99:
+                print(f"[{epoch + 1}, {i + 1:5d}] loss: {running_loss / 100:.3f}")
+                running_loss = 0.0
 
 # Setting up Hugging Face sentiment analysis pipeline
 from transformers import pipeline
@@ -59,9 +60,15 @@ def func(utterance):
 
 # Getting Gradio library
 import gradio as gr
-description = "This is an AI sentiment analyzer that checks and predicts the emotions in a given utterance."
+def main():
+    # Fine-tune the model
+    fine_tune_model()
 
-app = gr.Interface(fn=func, inputs="text", outputs="text", title="Sentiment Analyzer", description=description)
-app.launch()
+    description = "This is an AI sentiment analyzer that checks and predicts the emotions in a given utterance."
+    
+    app = gr.Interface(fn=func, inputs="text", outputs="text", title="Sentiment Analyzer", description=description)
+    app.launch()
+if __name__ == "__main__":
+    main()
 
 
