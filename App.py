@@ -1,7 +1,8 @@
+# installation
 !pip install gradio
 !pip install transformers
 !pip install torch torchvision torchaudio
-
+#importing required libraries
 import torch
 import torchvision
 import torchvision.transforms as transforms
